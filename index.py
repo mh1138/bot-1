@@ -1,6 +1,8 @@
 import discord
 import stockx
 import datetime
+import restocks
+import csv
 
 
 
@@ -16,12 +18,71 @@ mesCha = ''
 a = 0
 g = False
 morInf = False
+footer_text = 'Restock Prices: \n'
+item_id = ''
+prof_size_restocks_price = {}
+keys = []
+footer_text = ''
+size_price_chart_sorted = {}
+mesAut = ''
+user_lan = ''
+mesCon = ''
+
+async def update_string(string, setting):
+    filename = "data.csv"
+    temp_data = []
+    id_exists = False
+    if setting == 'v':
+        if user_lan == 'en':
+            await mesCha.send('**VAT Updated!**')
+        elif user_lan == 'de':
+            await mesCha.send('**Vorsteuer-abzug Aktualisiert!**')
+    elif setting == 'l':
+        if string == 'en':
+            await mesCha.send('**Language Updated!**')
+        elif string == 'de':
+            await mesCha.send('**Sprache aktualisiert!**')
+    with open(filename, 'r') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            temp_data.append(row)
+            if row['user_id'] == str(mesAut):
+                id_exists = True
+                if setting == 'v':
+                    row['vor_ab'] = string
+                elif setting == 'l':
+                    row['language'] = string
+    if not id_exists:
+        if setting == 'v':
+            temp_data.append({'user_id': str(mesAut), 'vor_ab': string})
+        if setting == 'l':
+            temp_data.append({'user_id': str(mesAut),  'language': string})
+    
+    with open(filename, 'w', newline='') as csvfile:
+        fieldnames = ['user_id', 'vor_ab', 'language']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(temp_data)
+        
 
 
 async def mainn(dif, queryend, aPrice, g, morInf):
+    global item_id
+    global footer_text
+    global prof_size_restocks_price
+    global keys
+    global footer_text
+    global size_price_chart_sorted
+    
     #Variables
     #Gets stockx api of sneaker name in a dictionary
+    print('----------------------------------------------------------------------------------------------------------')
     rouNum = 0
+    keys = []
+    prof_size_restocks_price = {}
+    size_price_chart_sorted = {}
+    footer_text ='**Restock Buy Prices:**\n'
+
     item = stockx.search(queryend, a) 
     #Calculates Price after taxes
     realPrice = round(((float(item['market']['lastSale'])*0.9)*0.97)-5, 1)
@@ -95,7 +156,7 @@ async def mainn(dif, queryend, aPrice, g, morInf):
     embed = discord.Embed(
         title = item['title'],
         url = 'https://stockx.com/de-de/' + item['urlKey'],
-        color=0xff0000
+        color=0xff0000,
     )
     embed.set_thumbnail(
         url=item['media']['imageUrl']
@@ -118,9 +179,62 @@ async def mainn(dif, queryend, aPrice, g, morInf):
             name = 'COP?',
             value = cop(aPrice)
         )
+
+    #text= for i in size_price_chart
+    #+ "\n MADE BY 1138 | " + fooTime)
+    item_id = item['styleId']
+
+    if item_id == 'N/A':
+        item_id = item['title']
+
+    if "/" in item_id:
+        item_id = item_id.split("/")[1]
+
+    url = 'https://restocks.net/de/shop/search?q={}&page=1'.format(item_id)
+    size_price_chart = restocks.search(url)
+    print(url)
+
+    for i in size_price_chart:
+        if str(size_price_chart[i]) != 'N/A':
+            size_price_chart_sorted[i] = int(str(size_price_chart[i])[:-2].replace('.', ''))
+        else:
+            size_price_chart_sorted[i] = 0
+    size_price_chart_sorted = {k: v for k, v in sorted(size_price_chart_sorted.items(), key=lambda item: item[1])}
+    size_price_chart_sorted = dict(reversed(list(size_price_chart_sorted.items())))
+    list(size_price_chart_sorted.keys())
+    
+    aa = 0
+    for i in size_price_chart:
+        sort = str(size_price_chart_sorted[str(list(size_price_chart_sorted.keys())[aa])])
+        if len(str(i)) == 2:
+            dist = str(i) + ':     ' + str(size_price_chart[i])
+            footer_text = footer_text + dist + '        ' + str(list(size_price_chart_sorted.keys())[aa]) + ': ' + sort + ' / ' + str(round(float(sort)*0.8, 2)) + ' €\n'
+        else:
+            footer_text = footer_text + str(i) + ': ' + str(size_price_chart[i]) + '        ' + str(list(size_price_chart_sorted.keys())[aa]) + ': ' + sort + ' / ' + str(round(float(sort)*0.8, 2)) + ' €\n'
+        aa += 1
+
+    footer_text = footer_text + "MADE BY 1138 | " + str(datetime.datetime.now().strftime("%H:%M")) + '  ' + str(datetime.datetime.now().strftime("%d-%m-%Y"))
+
+
+
+
+    #for i in size_price_chart_sorted:
+    #    footer_text = footer_text + str(i) + ': ' + str(size_price_chart_sorted[i]) + '\n'
+
+    
+
+
+
+
+
     fooTime = str(datetime.datetime.now().strftime("%H:%M %d.%m.%Y"))
-    embed.set_footer(text="MADE BY 1138 | " + fooTime)
-    embed.set_author(name = 'Top Product' if a == 0 else str(a+1) + '. Product/' + str(stockx.numKey))
+    embed.set_footer(text = footer_text)
+    if a == 0:
+        author = 'Top Product ' + '\nRequest "'+ queryend + '" by: ' + str(mesAutName) 
+    else:
+        author = str(a+1) + '. Product/' + str(stockx.numKey) + '\nRequest "'+ queryend + '" by: ' + str(mesAutName) 
+
+    embed.set_author(name = author) 
     #Embed pictures
     if item['gender'] == 'men':
         embed.set_image(url = "https://mephistostore.de/media/image/40/4b/f1/herren.jpg")
@@ -146,7 +260,78 @@ async def mainn(dif, queryend, aPrice, g, morInf):
     if a < stockx.numKey - 1:
         await message.add_reaction('➡️')
     await message.add_reaction('ℹ️')
-    comLog()
+    #comLog()
+
+
+
+async def settings(query):
+    query = query.lower()
+
+    if query.startswith('help'):
+        if user_lan == 'en':
+            embed=discord.Embed(title="Settings Help", description="Choose individual user settings")
+            embed.add_field(name="!settings l DE/EN", value="Choose your Language", inline=False)
+            embed.add_field(name="!settings v yes/nos", value="Do you VAT flip?", inline=False)
+            embed.add_field(name="!1138", value="List of every Command", inline=False)
+            embed.set_footer(text="Made by 1138")
+            await mesCha.send(embed=embed)
+        elif user_lan == 'de':
+            embed=discord.Embed(title="Einstellungs Hilfe", description="Wähle individuelle nutzer Einstellungen")
+            embed.add_field(name="!settings l DE/EN", value="Wähle deine Sprache", inline=False)
+            embed.add_field(name="!settings v Ja/Nein/J/N", value="Kannst du Vorsteuer abziehen?", inline=False)
+            embed.add_field(name="!1138", value="Liste aller Kommands", inline=False)
+            embed.set_footer(text="Made by 1138")
+            await mesCha.send(embed=embed)
+    elif query.startswith('v'):
+        
+        option = query.replace('v ', '')
+        if option == '':
+            await mesCha.send('**Input is needed!**')
+            return
+
+        if user_lan == 'en':
+            if option != 'yes' and option != 'no' and option != 'y' and option != 'n':
+                if user_lan == 'en':
+                    await mesCha.send('**Invalid Input! Expected: Yes/No/Y/N**')
+                    return
+        elif user_lan == 'de':
+            if option != 'yes' and option != 'no' and option != 'y' and option != 'n':
+                await mesCha.send('**Kein gültiges Argument! Möglichkeiten: Yes/No/Y/N**')
+                return
+        
+        if option == 'n':
+            option = 'no'
+        elif option == 'y':
+            option = 'yes'
+       
+
+        await update_string(option, 'v')
+
+    elif query.startswith('l'):
+        option = query.replace('l ', '')
+        if option == '':
+            await mesCha.send('**Input is needed!**')
+            return
+
+        if option != 'de' and option != 'en':
+            await mesCha.send('**Invalid Input! Expected: DE/EN**')
+            return
+
+        await update_string(option, 'l')
+
+        
+async def command_list():
+    global command
+    command = True
+    embed=discord.Embed(title="Command List", description="Possible Commands")
+    embed.add_field(name="!price '...'", value="Shows you details about a certain shoe", inline=False)
+    embed.add_field(name="!settings help", value="Shows you possible settings", inline=False)
+    embed.set_footer(text="Made by 1138")
+    message = await mesCha.send(embed=embed)
+    await message.add_reaction('🇸')
+
+
+
 
 
 @client.event
@@ -161,7 +346,14 @@ async def on_message(message):
     global a
     global mesCha
     global g
-    mesCha = message.channel
+    global mesAut
+    global user_lan
+    global user_vat
+    global mesCon
+    global mesAutName
+    global command
+    a = 0
+    g = False
     #Checking
     #Checks if the message author was the bot himself
     if message.author == client.user and message.content.split(' ')[0] != 'Next' and message.content.split(' ')[0] != 'Previous':
@@ -170,15 +362,25 @@ async def on_message(message):
     if message.channel.id != channel_id:
         print('wr ch')
         return
-    #Prints Author of message and message in the console
-    a = 0
+    command = False
+    mesCon = message.content
+    await message.delete()
 
-    #Splitting
 
-    #Saves Sneaker name and , if given, individual price in variables
-    if message.content.split(' ')[0] == '!stx':
-        query = message.content.replace('!stx ', '')
-        if message.content[-1] == 'g':
+    mesCha = message.channel
+    mesAut = message.author.id
+    mesAutName = message.author.name
+    
+    with open('data.csv', 'r') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                if row['user_id'] == str(mesAut):
+                    user_vat = row['vor_ab']
+                    user_lan = row['language']
+
+    if message.content.split(' ')[0] == '!price':
+        query = message.content.replace('!price ', '')
+        if message.content[-1] == 'g' or user_vat == 'yes':
             query = query.replace('g', '')
             g = True
         if '-' in query:
@@ -187,35 +389,26 @@ async def on_message(message):
         else:
             aPrice = '-'
             queryend = query
-            
-            
-    elif message.content.split(' ')[0] == 'Next':
-        query = message.content.replace('Next Product: ', '')
-        if message.content[-1] == 'g':
-            query = query.replace('g', '')
-            g = True
-        if '-' in query:
-            aPrice = query.split('-')[1]
-            queryend = query.replace('-' + aPrice, '')
-        else:
-            aPrice = '-'
-            queryend = query
-    elif message.content.split(' ')[0] == 'Previous':
-        query = message.content.replace('Previous Product: ', '')
-        if '-' in query:
-            aPrice = query.split('-')[1]
-            queryend = query.replace('-' + aPrice, '')
-        else:
-            aPrice = '-'
-            queryend = query
+        await mainn('onMes', queryend, aPrice, g, morInf)        
+                       
+    elif message.content.split(' ')[0] == '!settings':
+        query = message.content.replace('!settings ', '')
+        if query == '!settings':
+            await mesCha.send("No such Command, **!settings help** for Command list!")
+        await settings(query)
+
+    elif message.content.startswith('!se'):
+        await mesCha.send("Invalid Command,  **'" + mesCon + "'**  did you mean **!settings ...'** ")
+
+    elif message.content.startswith('!1138'):
+        await command_list()
+
     else:
-        queryend = ''
-        aPrice = '-'
-        return
-    if queryend == '!stx':
-        return
+        if user_lan == 'en':
+            await mesCha.send("**Invalid command '!1138' for Command list**")
+        elif user_lan == 'de':
+            await mesCha.send("**Ungültiger Kommand '!1138' für Kommandliste**")
 
-    await mainn('onMes', queryend, aPrice, g, morInf)
     
 
 
@@ -224,25 +417,79 @@ async def on_reaction_add(reaction, user):
     global a
     global morInf
     mai = False
-    if user == client.user:
-        return
-    if reaction.emoji == '➡️' and a < stockx.numKey - 1:
-        a += 1
-        mai = True
-    if reaction.emoji == '⬅️' and a > 0:
-        a -= 1
-        mai = True
-    if reaction.emoji == '1️⃣' and a > 3:
-        a = 0
-        mai = True
-    if reaction.emoji == 'ℹ️':
-        morInf = False if morInf else True
-        mai = True
+    if command == False:
+        if user == client.user:
+            return
+        if reaction.emoji == '➡️' and a < stockx.numKey - 1:
+            a += 1
+            mai = True
+        elif reaction.emoji == '⬅️' and a > 0:
+            a -= 1
+            mai = True
+        elif reaction.emoji == '1️⃣' and a > 3:
+            a = 0
+            mai = True
+        elif reaction.emoji == 'ℹ️':
+            morInf = False if morInf else True
+            mai = True
 
-    if mai:
-        channel = reaction.message.channel
-        await reaction.message.delete()
-        await mainn('onRea', queryend, aPrice, g, morInf)
+        if mai:
+            channel = reaction.message.channel
+            await reaction.message.delete()
+            await mainn('onRea', queryend, aPrice, g, morInf)
+    else:
+        if user == client.user:
+            return
+        if reaction.emoji == '🇸':
+            await reaction.message.delete()
+            await settings('help')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         
