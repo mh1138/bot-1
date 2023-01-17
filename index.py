@@ -3,22 +3,32 @@ import stockx
 import datetime
 import restocks
 import csv
+import alias
 
 
 
+db = '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
 #client und dessen intents werden definiert
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
 #bot-command channel 
+
 channel_id = 1052329706965446666
-db = '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+
+
 queryend = ''
 aPrice = ''
+
+
 mesCha = ''
 a = 0
+
+
 g = False
 morInf = False
-footer_text = 'Restock Prices: \n'
+
+
+footer_text = ''
 item_id = ''
 prof_size_restocks_price = {}
 keys = []
@@ -27,6 +37,8 @@ size_price_chart_sorted = {}
 mesAut = ''
 user_lan = ''
 mesCon = ''
+size_char_usM_EU = {'35.5': '3.5', '36.0': '4', '36.5': '4.5', '37.5': '5', '38.0': '5.5', '38.5': '6', '39.0': '6.5', '40.0': '7', '40.5': '7.5', '41.0': '8','42.0': '8.5', '42.5': '9', '43.0': '9.5', '44.0': '10', '44.5': '10.5', '45.0': '11','45.5': '11.5', '46.0': '12', '47.0': '12.5', '47.5': '13', '48.5': '14', '49.5': '15'}
+size_char_usW_EU = {'35.5': '5', '36.0': '5.5', '36.5': '6', '37.5': '6.5', '38.0': '7', '39.5': '7.5', '39.0': '8', '40.0': '8.5', '40.5': '9', '41.0': '9.5', '42.0': '10', '42.5': '10.5', '43.0': '11', '44.0': '11.5', '44.5': '12'}
 
 async def update_string(string, setting):
     filename = "data.csv"
@@ -81,7 +93,7 @@ async def mainn(dif, queryend, aPrice, g, morInf):
     keys = []
     prof_size_restocks_price = {}
     size_price_chart_sorted = {}
-    footer_text ='**Restock Buy Prices:**\n'
+    footer_text ='**Restock Buy Prices:**                          Last Alias Sales:\n'
 
     item = stockx.search(queryend, a) 
     #Calculates Price after taxes
@@ -194,6 +206,10 @@ async def mainn(dif, queryend, aPrice, g, morInf):
     size_price_chart = restocks.search(url)
     print(url)
 
+    alias_list = alias.search(item_id)
+    alias_size_price_last = alias_list[0]
+    print(alias_size_price_last)
+
     for i in size_price_chart:
         if str(size_price_chart[i]) != 'N/A':
             size_price_chart_sorted[i] = int(str(size_price_chart[i])[:-2].replace('.', ''))
@@ -202,19 +218,55 @@ async def mainn(dif, queryend, aPrice, g, morInf):
     size_price_chart_sorted = {k: v for k, v in sorted(size_price_chart_sorted.items(), key=lambda item: item[1])}
     size_price_chart_sorted = dict(reversed(list(size_price_chart_sorted.items())))
     list(size_price_chart_sorted.keys())
-    
+    print(size_price_chart)
+    aa = 0
+    alias_size_price_last_edited = {}
+    alias_size_price_last_edited_sorted = {}
+
+    for i in size_price_chart:
+        if i == '48.0':
+            continue
+        if item['gender'] == 'men':
+            if float(i) < 36:
+                continue
+            size = size_char_usM_EU[i]
+            
+        if item['gender'] == 'women':
+            if float(i) > 46:
+                continue
+            
+        if size in alias_size_price_last.keys():
+            alias_size_price_last_edited[size] = str(alias_size_price_last[size])
+            alias_size_price_last_edited_sorted[size] = alias_size_price_last[size]
+        else:
+            alias_size_price_last_edited[size] = '0'
+            alias_size_price_last_edited_sorted[size] = 0
+
+    print(alias_size_price_last_edited)
+    alias_size_price_last_edited_sorted = {k: v for k, v in sorted(alias_size_price_last_edited_sorted.items(), key=lambda item: item[1])}
+    alias_size_price_last_edited_sorted = dict(reversed(list(alias_size_price_last_edited_sorted.items())))
+    print(alias_size_price_last_edited_sorted)
     aa = 0
     for i in size_price_chart:
+        if i == '48.0':
+            continue
+        if item['gender'] == 'men':
+            if float(i) < 36:
+                continue
+            size = size_char_usM_EU[i]
+            
+        if item['gender'] == 'women':
+            if float(i) > 46:
+                continue
+        size = size_char_usM_EU[i]
         sort = str(size_price_chart_sorted[str(list(size_price_chart_sorted.keys())[aa])])
-        if len(str(i)) == 2:
-            dist = str(i) + ':     ' + str(size_price_chart[i])
-            footer_text = footer_text + dist + '        ' + str(list(size_price_chart_sorted.keys())[aa]) + ': ' + sort + ' / ' + str(round(float(sort)*0.8, 2)) + ' €\n'
-        else:
-            footer_text = footer_text + str(i) + ': ' + str(size_price_chart[i]) + '        ' + str(list(size_price_chart_sorted.keys())[aa]) + ': ' + sort + ' / ' + str(round(float(sort)*0.8, 2)) + ' €\n'
+        alias_sort = str(alias_size_price_last_edited_sorted[str(list(alias_size_price_last_edited_sorted.keys())[aa])])
+        dist = str(i) + ':     ' + str(size_price_chart[i])
+        footer_text = footer_text + dist + '      ' + str(list(size_price_chart_sorted.keys())[aa]) + ': ' + sort + ' / ' + str(round(float(sort)*0.8, 2)) + '€       ' + str(size) + ':  ' + alias_size_price_last_edited[size] +'€             ' + str(list(alias_size_price_last_edited_sorted.keys())[aa]) + ':  ' + alias_sort + '€\n'
+        
         aa += 1
 
     footer_text = footer_text + "MADE BY 1138 | " + str(datetime.datetime.now().strftime("%H:%M")) + '  ' + str(datetime.datetime.now().strftime("%d-%m-%Y"))
-
 
 
 
@@ -265,23 +317,28 @@ async def mainn(dif, queryend, aPrice, g, morInf):
 
 
 async def settings(query):
+
+    print('Settings!')
     query = query.lower()
 
     if query.startswith('help'):
-        if user_lan == 'en':
-            embed=discord.Embed(title="Settings Help", description="Choose individual user settings")
-            embed.add_field(name="!settings l DE/EN", value="Choose your Language", inline=False)
-            embed.add_field(name="!settings v yes/nos", value="Do you VAT flip?", inline=False)
-            embed.add_field(name="!1138", value="List of every Command", inline=False)
-            embed.set_footer(text="Made by 1138")
-            await mesCha.send(embed=embed)
-        elif user_lan == 'de':
+        print('help')
+        if user_lan == 'de':
             embed=discord.Embed(title="Einstellungs Hilfe", description="Wähle individuelle nutzer Einstellungen")
             embed.add_field(name="!settings l DE/EN", value="Wähle deine Sprache", inline=False)
             embed.add_field(name="!settings v Ja/Nein/J/N", value="Kannst du Vorsteuer abziehen?", inline=False)
             embed.add_field(name="!1138", value="Liste aller Kommands", inline=False)
             embed.set_footer(text="Made by 1138")
             await mesCha.send(embed=embed)
+            print('de')
+        else:
+            embed=discord.Embed(title="Settings Help", description="Choose individual user settings")
+            embed.add_field(name="!settings l DE/EN", value="Choose your Language", inline=False)
+            embed.add_field(name="!settings v yes/nos", value="Do you VAT flip?", inline=False)
+            embed.add_field(name="!1138", value="List of every Command", inline=False)
+            embed.set_footer(text="Made by 1138")
+            await mesCha.send(embed=embed)
+            print('en')
     elif query.startswith('v'):
         
         option = query.replace('v ', '')
@@ -364,12 +421,12 @@ async def on_message(message):
         return
     command = False
     mesCon = message.content
-    await message.delete()
-
-
     mesCha = message.channel
     mesAut = message.author.id
     mesAutName = message.author.name
+    await message.delete()
+
+
     
     with open('data.csv', 'r') as csvfile:
             reader = csv.DictReader(csvfile)
