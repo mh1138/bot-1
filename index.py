@@ -558,4 +558,4 @@ async def on_reaction_add(reaction, user):
 
 
 #Startet bot mit Token
-client.run('MTA1MTUxODE1NDMxODI5MTAwNg.Gz5Wjs.uui7DfTc4YC__4iDXBN4eKah9zOE8h_RteCSOw')
+client.run('')
